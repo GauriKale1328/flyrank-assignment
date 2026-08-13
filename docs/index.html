@@ -1,1 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <title>Refresh Priority Scoring | FlyRank Capstone</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      line-height: 1.7;
+      background: #f6f7fb;
+      color: #202124;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 30px 20px;
+    }
+
+    header {
+      background: #111827;
+      color: white;
+      padding: 70px 20px;
+    }
+
+    header h1 {
+      font-size: 42px;
+      margin-bottom: 15px;
+      line-height: 1.2;
+    }
+
+    header p {
+      font-size: 18px;
+      max-width: 800px;
+      color: #d1d5db;
+    }
+
+    section {
+      background: white;
+      margin: 25px 0;
+      padding: 35px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    h2 {
+      color: #111827;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+
+    h3 {
+      margin-top: 25px;
+    }
+
+    .abstract {
+      font-size: 17px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin: 25px 0;
+    }
+
+    .metric {
+      background: #f3f4f6;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 28px;
+      color: #111827;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: left;
+    }
+
+    th {
+      background: #f3f4f6;
+    }
+
+    .highlight {
+      background: #eef2ff;
+      border-left: 5px solid #4f46e5;
+      padding: 18px;
+      margin: 20px 0;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 40px 20px;
+      color: #6b7280;
+    }
+
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 30px;
+      }
+
+      section {
+        padding: 22px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="container">
+    <h1>Refresh Priority Scoring for Content Optimization Using Search Performance Signals</h1>
+
+    <p>
+      A Search Intelligence capstone using FlyRank search-performance data
+      to identify and rank pages for content-refresh attention.
+    </p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ABSTRACT -->
+
+  <section>
+    <h2>Abstract</h2>
+
+    <p class="abstract">
+      This research asks how search-performance signals can be used to
+      prioritize content pages for potential refresh. A transparent
+      rule-based refresh-priority baseline was combined with a Logistic
+      Regression model using impressions, clicks, CTR, and average search
+      position. The model was evaluated on a held-out 20% test split and
+      achieved 98.46% accuracy, 98.23% precision, 97.03% recall, 97.63%
+      F1-score, and 99.91% ROC-AUC. The resulting priority ranking
+      concentrated observed refresh opportunities into a smaller
+      high-priority group, with a 95.47% capture rate for observed refresh
+      pages in the development sample. The output is framed as a
+      decision-support and prioritization workflow rather than causal
+      evidence of future ranking or refresh impact.
+    </p>
+  </section>
+
+
+  <!-- INTRODUCTION -->
+
+  <section>
+    <h2>1. Introduction / Problem Statement</h2>
+
+    <p>
+      Content teams may have many pages that could potentially benefit
+      from review or refresh. A practical challenge is deciding which
+      pages should receive attention first.
+    </p>
+
+    <p>
+      This capstone focuses on the decision:
+      <strong>Which content pages should be prioritized for refresh
+      based on observable search-performance signals?</strong>
+    </p>
+
+    <p>
+      The goal is not to claim that a model can prove Google's ranking
+      algorithm or guarantee the outcome of a content refresh. Instead,
+      the goal is to create a repeatable ranking and decision-support
+      workflow that helps focus review efforts on a manageable set of
+      pages.
+    </p>
+  </section>
+
+
+  <!-- DATA -->
+
+  <section>
+    <h2>2. Data</h2>
+
+    <p>
+      The analysis uses the FlyRank internship warehouse, specifically
+      the <code>fact_content_daily_performance</code> table.
+    </p>
+
+    <p>
+      The selected development window is March 2026
+      (<code>2026-03</code>), covering March 1 through March 31, 2026.
+    </p>
+
+    <p>
+      For model development and experimentation, a 100,000-row sample
+      from the March 2026 data was used.
+    </p>
+
+    <h3>Predictive Signals</h3>
+
+    <ul>
+      <li>GSC impressions</li>
+      <li>GSC clicks</li>
+      <li>Click-through rate (CTR)</li>
+      <li>Average search position</li>
+    </ul>
+
+    <h3>Excluded Fields</h3>
+
+    <p>
+      Label-derived fields such as <code>trend_direction</code>,
+      <code>trend_pct</code>, and <code>is_declining_label</code> were
+      excluded to reduce leakage risk.
+    </p>
+
+    <p>
+      Client and content identifiers were not used as predictive
+      features. No client names, domains, private queries, credentials,
+      or raw exports are included in this public paper.
+    </p>
+  </section>
+
+
+  <!-- METHODOLOGY -->
+
+  <section>
+    <h2>3. Methodology</h2>
+
+    <h3>Baseline</h3>
+
+    <p>
+      A transparent baseline refresh-priority score was used as the
+      starting decision rule. The binary proxy target for modeling was
+      defined as:
+    </p>
+
+    <div class="highlight">
+      <strong>Refresh-priority class = 1 when baseline_score ≥ 3</strong>
+    </div>
+
+    <h3>Model</h3>
+
+    <p>
+      Logistic Regression was trained using four search-performance
+      features:
+      impressions, clicks, CTR, and average search position.
+    </p>
+
+    <h3>Validation Design</h3>
+
+    <p>
+      The development sample was divided into training and test sets
+      using an 80/20 split with a fixed random state and stratification
+      by the proxy target.
+    </p>
+
+    <p>
+      The test set was kept separate from model fitting and was used
+      for final evaluation.
+    </p>
+
+    <h3>Leakage Checks</h3>
+
+    <p>
+      Features directly derived from the target or future performance
+      information were excluded. The model therefore uses observable
+      search-performance signals rather than the target-derived fields
+      themselves.
+    </p>
+  </section>
+
+
+  <!-- RESULTS -->
+
+  <section>
+    <h2>4. Results</h2>
+
+    <p>
+      The Logistic Regression model was evaluated on the held-out
+      20% test split.
+    </p>
+
+    <div class="metrics">
+
+      <div class="metric">
+        <strong>98.46%</strong>
+        Accuracy
+      </div>
+
+      <div class="metric">
+        <strong>98.23%</strong>
+        Precision
+      </div>
+
+      <div class="metric">
+        <strong>97.03%</strong>
+        Recall
+      </div>
+
+      <div class="metric">
+        <strong>97.63%</strong>
+        F1 Score
+      </div>
+
+      <div class="metric">
+        <strong>99.91%</strong>
+        ROC-AUC
+      </div>
+
+    </div>
+
+    <h3>Interpretation</h3>
+
+    <p>
+      The results show that the selected search-performance features can
+      reproduce the refresh-priority proxy with high agreement.
+    </p>
+
+    <p>
+      Because the target is derived from the rule-based
+      <code>baseline_score</code>, these metrics should not be
+      interpreted as proof that the model predicts real-world refresh
+      outcomes.
+    </p>
+
+    <p>
+      The model is therefore treated as a probability-based
+      decision-support layer that reproduces the transparent baseline
+      while enabling ranking and prioritization.
+    </p>
+  </section>
+
+
+  <!-- PRIORITY RESULTS -->
+
+  <section>
+    <h2>5. Ranked Recommendations</h2>
+
+    <p>
+      The final workflow converts model outputs into practical
+      priority buckets for content review.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Priority</th>
+          <th>Pages</th>
+          <th>Observed Refresh Rate</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr>
+          <td>Low</td>
+          <td>13,352</td>
+          <td>0.61%</td>
+        </tr>
+
+        <tr>
+          <td>Medium</td>
+          <td>342</td>
+          <td>62.57%</td>
+        </tr>
+
+        <tr>
+          <td>High</td>
+          <td>6,306</td>
+          <td>98.83%</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="highlight">
+      <strong>High-priority capture rate: 95.47%</strong>
+      <br>
+      6,232 of 6,528 observed refresh pages were captured in the
+      High-priority bucket.
+    </div>
+
+    <h3>Action Playbook</h3>
+
+    <ul>
+      <li>
+        <strong>High priority:</strong> review first for potential
+        content refresh opportunities.
+      </li>
+
+      <li>
+        <strong>Medium priority:</strong> monitor and review when
+        additional content or business context supports action.
+      </li>
+
+      <li>
+        <strong>Low priority:</strong> maintain monitoring and avoid
+        unnecessary refresh effort unless other evidence appears.
+      </li>
+    </ul>
+
+    <p>
+      These recommendations are intended to help allocate review effort;
+      they are not claims that refreshing a page will cause improved
+      rankings, traffic, or clicks.
+    </p>
+  </section>
+
+
+  <!-- FEATURE INTERPRETATION -->
+
+  <section>
+    <h2>6. Feature Interpretation</h2>
+
+    <p>
+      Logistic Regression coefficients indicate the direction of
+      association between each search-performance feature and the
+      refresh-priority proxy.
+    </p>
+
+    <p>
+      Positive coefficients indicate a positive association with the
+      predicted refresh-priority class, while negative coefficients
+      indicate a negative association.
+    </p>
+
+    <p>
+      Because the features have different measurement scales, raw
+      coefficient magnitudes should not be interpreted as directly
+      comparable feature-importance scores.
+    </p>
+  </section>
+
+
+  <!-- LIMITATIONS -->
+
+  <section>
+    <h2>7. Limitations & Honest Framing</h2>
+
+    <ul>
+      <li>
+        The modeled target is a proxy derived from the baseline score,
+        not a directly observed business outcome.
+      </li>
+
+      <li>
+        The development analysis uses a 100,000-row sample from the
+        March 2026 data window.
+      </li>
+
+      <li>
+        The results describe observed relationships in the analyzed
+        sample and should not be interpreted as causal evidence.
+      </li>
+
+      <li>
+        The model does not prove or explain Google's ranking algorithm.
+      </li>
+
+      <li>
+        A high-priority recommendation means "review this page first,"
+        not "refreshing this page will definitely improve performance."
+      </li>
+    </ul>
+  </section>
+
+
+  <!-- REPRODUCIBILITY -->
+
+  <section>
+    <h2>8. Reproducibility</h2>
+
+    <p>
+      The research workflow, model development, evaluation, and
+      recommendation generation are documented in the capstone notebook
+      contained in the repository.
+    </p>
+
+    <p>
+      The repository contains the internship work, notebooks, outputs,
+      scripts, and supporting documentation used throughout the project.
+    </p>
+
+    <p>
+      Replace the placeholder repository link below with your actual
+      GitHub repository URL before publishing.
+    </p>
+
+    <p>
+      <a href="YOUR_GITHUB_REPOSITORY_URL" target="_blank">
+        View the GitHub repository and capstone notebook
+      </a>
+    </p>
+  </section>
+
+
+  <!-- ACKNOWLEDGMENTS -->
+
+  <section>
+    <h2>9. Acknowledgments & Data Credit</h2>
+
+    <p>
+      Built on the FlyRank ML Internship dataset.
+    </p>
+
+    <p>
+      Data and internship context provided through the FlyRank ML
+      Internship program.
+    </p>
+
+    <p>
+      <a href="https://flyrank.ai" target="_blank">
+        FlyRank
+      </a>
+    </p>
+  </section>
+
+</main>
+
+
+<footer>
+  <p>
+    FlyRank ML Internship Capstone · Refresh Priority Scoring
+  </p>
+</footer>
+
+</body>
+</html>
